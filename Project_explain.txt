@@ -1,0 +1,130 @@
+Short version: **yes, your code gives a defensible *prototype-level* solution to that brief – at the prompt/context layer, not the whole data-centre.**
+ You just need to present it as a *focused piece of the bigger sustainability puzzle*.
+
+Let me walk through how what you’ve built lines up with the project description.
+
+---
+
+## 1. Transparency in energy usage
+
+**What the brief wants:**
+
+> “transparency in energy usage” and support for future EU-style reporting.
+
+**What your code actually does:**
+
+1. **Extracts measurable features from each prompt** – tokens, type-token ratio, average sentence length, stopword ratio, sections. 
+
+2. **Estimates energy in kWh for that prompt** using those features + model parameters (`layers`, `training_hours`, `flops_per_hour`).
+
+   * The energy model scales with both **model size / FLOPs** and **prompt length / complexity**, via `predict_energy_kwh`. 
+   * `EnergyEstimator` wraps this so it can be used consistently. 
+
+3. **Shows this transparently in the UI** when the user clicks **“Check Prompt”**:
+
+   * Original prompt
+   * All features
+   * Estimated energy in kWh 
+
+4. **Logs every request + energy estimate** to both **CSV and JSONL** via `log_energy_event`, capturing:
+
+   * timestamp, action (`check`/`improve`), variant, preview text
+   * energy_kwh, layers, training_hours, flops_hr, and all features 
+
+That logging piece is exactly what you can call **“a first step toward EU-style energy reporting pipelines for LLM services.”**
+
+So for the *transparency* part of the brief, your code is clearly on-target.
+
+---
+
+## 2. Energy-efficient prompt/context engineering with ML
+
+**What the brief wants:**
+
+> “Energy-Efficient Prompt/Context Engineering with Machine Learning”
+
+**What your code actually does:**
+
+1. **Represents the prompt structurally** as `PromptData(role, context, expectations)` and can combine it into a clean text format. 
+
+2. **Uses ML-style optimisation over multiple variants:**
+
+   * Builds a `PromptVariant` from those three fields. 
+
+   * Generates compressed variants of each field (`none`, `mild`, `strong` for role/context, milder for expectations). 
+
+   * For each variant it:
+
+     * recomputes features
+     * predicts energy with `predict_energy_kwh`
+     * computes semantic similarity to original with hashed BoW embeddings
+
+   * It then **selects the best variant** based on:
+
+     * closeness to target similarity (`similarity_min`)
+     * lower energy
+     * fewer tokens 
+
+3. The UI shows **before/after**:
+
+   * Original vs improved prompt text
+   * Semantic similarity
+   * Energy before → after
+   * Feature deltas
+   * And a natural-language explanation of *what changed and why it matters* using `build_improvement_insights`.
+
+That is a pretty textbook example of **“prompt/context engineering using ML-style optimisation under an energy-aware objective.”**
+
+So for the *energy-efficient prompt engineering* part, you’re absolutely answering the problem.
+
+---
+
+## 3. Dynamic workload optimisation & data-centre scale
+
+**What the brief talks about:**
+
+* “dynamic workload optimization in data centers”
+* many data centres, grid strain, water use, regulations, etc.
+
+**What your code does here (and doesn’t):**
+
+✅ **Contributes indirectly at the micro level:**
+
+* By **reducing per-prompt complexity and estimated energy**, your tool reduces the computational workload that a serving cluster would need to handle for a given volume of traffic.
+* Because you **log every request + energy estimate**, those logs could feed into higher-level systems that:
+
+  * detect heavy workloads,
+  * design more efficient prompts/policies,
+  * and support reporting / capacity planning. 
+
+❌ **What it does *not* (and isn’t expected to) implement:**
+
+* No real-time **scheduling across data centres or GPUs**
+* No integration with actual **power meters, PUE, cooling, water usage**
+* No direct modelling of **tariffs, carbon intensity by region, or grid constraints**
+
+Those are infrastructure- and policy-level components that would realistically live **around** your tool in a bigger architecture.
+
+For a course project, it’s completely reasonable that you focused on **one concrete “slice”**: making individual prompts more energy-aware and reportable.
+
+---
+
+## 4. How to honestly present your answer
+
+You can safely say something like this in class:
+
+> Our code does not attempt to simulate an entire AI data centre.
+> Instead, it tackles a critical *missing layer* in sustainable AI: **how individual prompts and contexts contribute to energy use**, and how we can **optimise them using lightweight machine-learning techniques**.
+>
+> Concretely, our tool:
+>
+> * **Makes energy usage transparent** at the prompt level, by estimating kWh and exposing text-complexity features to the user.
+> * **Logs every request** to CSV/JSONL as a foundation for future EU-style energy reporting.
+> * **Optimises prompts automatically** to reduce predicted energy while keeping high semantic similarity, using an ML-style multi-variant optimisation pipeline.
+>
+> In a real system, these logs and optimised prompts could feed into **larger workload-management and reporting systems** at the data-centre level.
+
+So:
+
+* **Does your code fully solve the entire macro problem (EU regs, grid strain, water use)?** → No, and it isn’t expected to.
+* **Does your code provide a clear, technically coherent solution to the part about “transparency and energy-efficient prompt/context engineering with ML”?** → **Yes, strongly.**
